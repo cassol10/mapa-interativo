@@ -1,104 +1,134 @@
-// firebase.js - Arquivo de integração com o Firebase Realtime Database
-
-// 1. Referência ao banco de dados
-const database = firebase.database();
-
-// 2. Objeto para armazenar os estados atuais
-const workOrdersData = {};
-
-// 3. Função para atualizar o status no Firebase
+// Função para atualizar status no Firebase
 function updateStatus(wo, status) {
     database.ref('workOrders/' + wo).update({
         status: status,
         lastUpdated: firebase.database.ServerValue.TIMESTAMP
-    }).then(() => {
-        console.log(`Status ${wo} atualizado para: ${status}`);
-    }).catch((error) => {
-        console.error("Erro ao atualizar:", error);
     });
 }
 
-// 4. Função para criar conteúdo do popup com Google Maps
-function createPopupContent(wo, pdo, status, coords) {
-    return `
-        <div class="custom-popup">
-            <strong>WO:</strong> ${wo}<br>
-            <strong>PDO:</strong> ${pdo}<br>
-            <strong>Status:</strong> <span class="status-badge">${status}</span><br>
-            <a href="https://www.google.com/maps?q=${coords.lat},${coords.lng}" 
-               target="_blank" class="gmaps-link">
-               📍 Abrir no Google Maps
-            </a>
-            <div class="checkbox-group">
-                <strong>Alterar Status:</strong>
-                <div class="checkbox-line">
-                    <input type="radio" id="aberta-${wo}" name="status-${wo}" 
-                           ${status === 'aberta' ? 'checked' : ''}
-                           onchange="updateStatus('${wo}', 'aberta')">
-                    <label for="aberta-${wo}">Aberta</label>
-                </div>
-                <div class="checkbox-line">
-                    <input type="radio" id="fechada-${wo}" name="status-${wo}" 
-                           ${status === 'fechada' ? 'checked' : ''}
-                           onchange="updateStatus('${wo}', 'fechada')">
-                    <label for="fechada-${wo}">Fechada</label>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// 5. Listener para atualizações em tempo real
+// Monitorar mudanças em tempo real
 database.ref('workOrders').on('value', (snapshot) => {
     const data = snapshot.val() || {};
     
-    // Atualiza o objeto local
-    Object.assign(workOrdersData, data);
-    
-    // Atualiza todos os marcadores
+    // Atualizar marcadores existentes
     for (const wo in markers) {
         if (data[wo]) {
-            const isClosed = data[wo].status === "fechada";
+            updateMarker(wo, data[wo]);
+        } else {
+            // Remover marcador se não existir mais no Firebase
+            map.removeLayer(markers[wo]);
+            delete markers[wo];
             
-            // Atualiza o ícone
-            markers[wo].setIcon(createCustomIcon(isClosed));
-            
-            // Atualiza o popup
-            const coords = markers[wo].getLatLng();
-            markers[wo].bindPopup(
-                createPopupContent(
-                    wo,
-                    data[wo].pdo || 'PDO não informado',
-                    data[wo].status,
-                    coords
-                )
-            );
-            
-            // Atualiza a listagem lateral
+            // Remover da lista
             if (workOrderItems[wo]) {
-                updateWorkOrderItem(wo, data[wo].status);
+                workOrderItems[wo].remove();
+                delete workOrderItems[wo];
             }
+        }
+    }
+    
+    // Adicionar novos marcadores
+    for (const wo in data) {
+        if (!markers[wo] && data[wo].coords) {
+            addMarker(wo, data[wo]);
         }
     }
 });
 
-// 6. Inicialização dos dados
-function initializeData() {
-    database.ref('workOrders').once('value').then((snapshot) => {
-        if (!snapshot.exists()) {
-            // Cria estrutura inicial se o banco estiver vazio
-            const initialData = {};
-            dataPoints.forEach(point => {
-                initialData[point.wo] = {
-                    pdo: point.pdo,
-                    status: 'aberta',
-                    coords: point.coords
-                };
-            });
-            database.ref('workOrders').set(initialData);
-        }
-    });
+// Adicionar novo marcador
+function addMarker(wo, data) {
+    const isClosed = data.status === 'fechada';
+    
+    // Criar marcador
+    markers[wo] = L.marker(data.coords, {
+        icon: createCustomIcon(isClosed)
+    }).addTo(map);
+    
+    // Criar popup
+    updatePopup(wo, data);
+    
+    // Criar item na lista
+    createListItem(wo, data);
 }
 
-// 7. Inicializa quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', initializeData);
+// Atualizar marcador existente
+function updateMarker(wo, data) {
+    const isClosed = data.status === 'fechada';
+    
+    // Atualizar ícone
+    markers[wo].setIcon(createCustomIcon(isClosed));
+    
+    // Atualizar popup
+    updatePopup(wo, data);
+    
+    // Atualizar lista
+    updateListItem(wo, data);
+}
+
+// Atualizar popup do marcador
+function updatePopup(wo, data) {
+    const coords = markers[wo].getLatLng();
+    const popupContent = `
+        <div class="popup-header">
+            <div class="popup-title">${wo}</div>
+        </div>
+        <div class="popup-content">
+            <p><strong>PDO:</strong> ${data.pdo || ''}</p>
+            <p><strong>Status:</strong> ${data.status === 'fechada' ? 'Fechada' : 'Aberta'}</p>
+            <a href="https://www.google.com/maps?q=${coords.lat},${coords.lng}" 
+               target="_blank" class="gmaps-link">
+               Abrir no Google Maps
+            </a>
+        </div>
+        <div class="popup-actions">
+            <button onclick="updateStatus('${wo}', 'aberta')" 
+                    style="${data.status === 'aberta' ? 'background:#3498db' : ''}">
+                Aberta
+            </button>
+            <button onclick="updateStatus('${wo}', 'fechada')" 
+                    style="${data.status === 'fechada' ? 'background:#e74c3c' : ''}">
+                Fechada
+            </button>
+        </div>
+    `;
+    
+    markers[wo].bindPopup(popupContent);
+}
+
+// Criar item na lista
+function createListItem(wo, data) {
+    const item = document.createElement('div');
+    item.className = `work-order-item ${data.status === 'fechada' ? 'fechada' : ''}`;
+    item.innerHTML = `
+        <div class="wo-header">
+            <span class="wo-number">${wo}</span>
+            <span class="wo-status" style="background: ${data.status === 'fechada' ? '#e74c3c' : '#3498db'}">
+                ${data.status === 'fechada' ? 'Fechada' : 'Aberta'}
+            </span>
+        </div>
+        <div class="wo-pdo">${data.pdo || ''}</div>
+    `;
+    
+    item.addEventListener('click', () => {
+        map.setView(data.coords, 16);
+        markers[wo].openPopup();
+    });
+    
+    document.getElementById('work-orders-list').appendChild(item);
+    workOrderItems[wo] = item;
+}
+
+// Atualizar item na lista
+function updateListItem(wo, data) {
+    if (workOrderItems[wo]) {
+        const statusEl = workOrderItems[wo].querySelector('.wo-status');
+        statusEl.textContent = data.status === 'fechada' ? 'Fechada' : 'Aberta';
+        statusEl.style.backgroundColor = data.status === 'fechada' ? '#e74c3c' : '#3498db';
+        
+        if (data.status === 'fechada') {
+            workOrderItems[wo].classList.add('fechada');
+        } else {
+            workOrderItems[wo].classList.remove('fechada');
+        }
+    }
+}
