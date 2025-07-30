@@ -1,3 +1,4 @@
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyCbUVgbofQ-e4e_umFYIbB48ePjBGHLz3g",
   authDomain: "mapa-interativo-88475.firebaseapp.com",
