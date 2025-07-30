@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mapa Interativo de Ordens de Serviço</title>
+    <title>Mapa Interativo de OS</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-
-
     
     <style>
         * {
@@ -35,7 +32,7 @@
         
         /* Sidebar Styles */
         #sidebar {
-            width: 350px;
+            width: 380px;
             background: #f5f7fa;
             border-right: 1px solid #ddd;
             display: flex;
@@ -86,6 +83,7 @@
             cursor: pointer;
             transition: all 0.2s;
             border-left: 4px solid #3498db;
+            position: relative;
         }
         
         .work-order-item.fechada {
@@ -121,9 +119,27 @@
             background: #e74c3c;
         }
         
-        .wo-pdo {
+        .wo-details {
             font-size: 0.9rem;
             color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .wo-technician {
+            font-size: 0.85rem;
+            color: #3498db;
+            font-weight: 500;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 0.9rem;
         }
         
         /* Form Styles */
@@ -151,6 +167,26 @@
             border: 1px solid #bdc3c7;
             border-radius: 4px;
             font-size: 0.9rem;
+        }
+        
+        .combined-coords {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .combined-coords input {
+            flex: 1;
+        }
+        
+        .paste-btn {
+            padding: 0 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
         }
         
         .form-actions {
@@ -227,6 +263,11 @@
             background: #e74c3c;
         }
         
+        .popup-technician {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        
         .gmaps-link {
             display: inline-block;
             margin-top: 8px;
@@ -237,6 +278,18 @@
         
         .gmaps-link:hover {
             text-decoration: underline;
+        }
+        
+        .popup-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .popup-btn {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border-radius: 3px;
         }
         
         /* Mobile Styles */
@@ -292,12 +345,21 @@
                     <input type="text" id="new-pdo" placeholder="Ex: PDO-92-LOU-0161.33">
                 </div>
                 <div class="form-group">
-                    <label for="new-lat">Latitude:</label>
-                    <input type="text" id="new-lat" placeholder="Ex: 38.817256">
+                    <label for="new-desc">Descrição:</label>
+                    <input type="text" id="new-desc" placeholder="Ex: Normal">
                 </div>
                 <div class="form-group">
-                    <label for="new-lng">Longitude:</label>
-                    <input type="text" id="new-lng" placeholder="Ex: -9.165423">
+                    <label for="new-technician">Técnico:</label>
+                    <input type="text" id="new-technician" placeholder="Ex: João Silva">
+                </div>
+                <div class="form-group">
+                    <label for="new-coords">Coordenadas:</label>
+                    <div class="combined-coords">
+                        <input type="text" id="new-coords" placeholder="Ex: 38.817256, -9.165423">
+                        <button class="paste-btn" onclick="pasteCoords()" title="Colar coordenadas">
+                            <i class="fas fa-paste"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" onclick="addNewOrder()">
@@ -317,6 +379,12 @@
         <button id="mobile-toggle" onclick="toggleSidebar()" style="display: none;">
             <i class="fas fa-bars"></i>
         </button>
+        
+        <!-- Filtros -->
+        <div id="filters" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">
+            <label><input type="checkbox" checked id="filter-abertas" onchange="filterMarkers()"> Aberta</label>
+            <label><input type="checkbox" checked id="filter-fechadas" onchange="filterMarkers()"> Fechada</label>
+        </div>
     </div>
 
     <!-- Leaflet JS -->
@@ -349,8 +417,7 @@
             
             // Adicionar evento de clique no mapa para obter coordenadas
             map.on('click', function(e) {
-                document.getElementById('new-lat').value = e.latlng.lat.toFixed(6);
-                document.getElementById('new-lng').value = e.latlng.lng.toFixed(6);
+                document.getElementById('new-coords').value = `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
             });
             
             // Iniciar listener do Firebase
@@ -382,7 +449,8 @@
         }
         
         // Criar ícone personalizado
-        function createCustomIcon(color) {
+        function createCustomIcon(status) {
+            const color = status === 'fechada' ? '#e74c3c' : '#3498db';
             return L.divIcon({
                 className: 'custom-icon',
                 html: `<div style="
@@ -406,6 +474,23 @@
                 </div>`,
                 iconSize: [30, 30],
                 iconAnchor: [15, 30]
+            });
+        }
+        
+        // Colar coordenadas formatadas
+        function pasteCoords() {
+            navigator.clipboard.readText().then(text => {
+                // Extrai números e vírgula (permite coordenadas com ou sem espaço após a vírgula)
+                const cleaned = text.replace(/[^\d.,-]/g, '');
+                const coords = cleaned.split(',').map(coord => coord.trim());
+                if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                    document.getElementById('new-coords').value = `${parseFloat(coords[0]).toFixed(6)}, ${parseFloat(coords[1]).toFixed(6)}`;
+                } else {
+                    alert('Formato inválido! Cole no formato: latitude, longitude');
+                }
+            }).catch(err => {
+                console.error('Erro ao colar:', err);
+                alert('Não foi possível acessar a área de transferência');
             });
         }
         
@@ -435,17 +520,21 @@
                         // Criar ou atualizar marcador
                         if (!markers[wo]) {
                             markers[wo] = L.marker(order.coords, {
-                                icon: createCustomIcon(order.status === 'fechada' ? '#e74c3c' : '#3498db')
+                                icon: createCustomIcon(order.status || 'aberta')
                             }).addTo(map);
                             
                             // Criar item na lista
                             createListItem(wo, order);
+                        } else {
+                            // Atualizar posição se necessário
+                            markers[wo].setLatLng(order.coords);
+                            markers[wo].setIcon(createCustomIcon(order.status || 'aberta'));
                         }
                         
                         // Atualizar popup
                         updatePopup(wo, order);
                         
-                        // Atualizar status
+                        // Atualizar item na lista
                         if (workOrderItems[wo]) {
                             updateListItem(wo, order);
                         }
@@ -459,11 +548,16 @@
             const item = document.createElement('div');
             item.className = `work-order-item ${order.status === 'fechada' ? 'fechada' : ''}`;
             item.innerHTML = `
+                <button class="delete-btn" onclick="deleteOrder('${wo}')" title="Excluir">
+                    <i class="fas fa-trash"></i>
+                </button>
                 <div class="wo-header">
                     <span class="wo-number">${wo}</span>
                     <span class="wo-status">${order.status === 'fechada' ? 'Fechada' : 'Aberta'}</span>
                 </div>
-                <div class="wo-pdo">${order.pdo || ''}</div>
+                <div class="wo-details">${order.pdo || ''}</div>
+                <div class="wo-details">${order.desc || ''}</div>
+                ${order.technician ? `<div class="wo-technician"><i class="fas fa-user"></i> ${order.technician}</div>` : ''}
             `;
             
             item.addEventListener('click', () => {
@@ -484,6 +578,8 @@
             const popupContent = `
                 <div class="popup-title">${wo}</div>
                 <div>${order.pdo || ''}</div>
+                <div>${order.desc || ''}</div>
+                ${order.technician ? `<div class="popup-technician"><i class="fas fa-user"></i> Técnico: ${order.technician}</div>` : ''}
                 <div class="popup-status ${order.status === 'fechada' ? 'status-fechada' : 'status-aberta'}">
                     ${order.status === 'fechada' ? 'Fechada' : 'Aberta'}
                 </div>
@@ -491,16 +587,21 @@
                    class="gmaps-link" target="_blank">
                    <i class="fas fa-map-marker-alt"></i> Abrir no Google Maps
                 </a>
-                <div style="margin-top: 10px;">
+                <div class="popup-actions">
                     <button onclick="updateOrderStatus('${wo}', 'aberta')" 
-                            style="${order.status === 'aberta' ? 'background:#3498db;color:white;' : ''}
-                                   padding: 5px 10px; border: none; border-radius: 3px; margin-right: 5px;">
+                            class="popup-btn" 
+                            style="${order.status === 'aberta' ? 'background:#3498db;color:white;' : ''}">
                         Aberta
                     </button>
                     <button onclick="updateOrderStatus('${wo}', 'fechada')" 
-                            style="${order.status === 'fechada' ? 'background:#e74c3c;color:white;' : ''}
-                                   padding: 5px 10px; border: none; border-radius: 3px;">
+                            class="popup-btn" 
+                            style="${order.status === 'fechada' ? 'background:#e74c3c;color:white;' : ''}">
                         Fechada
+                    </button>
+                    <button onclick="deleteOrder('${wo}')" 
+                            class="popup-btn" 
+                            style="background:#95a5a6;color:white;">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             `;
@@ -522,6 +623,21 @@
                     item.classList.remove('fechada');
                     statusBadge.style.background = '#3498db';
                 }
+                
+                // Atualizar técnico se existir
+                const technicianEl = item.querySelector('.wo-technician');
+                if (order.technician) {
+                    if (!technicianEl) {
+                        const newTechnicianEl = document.createElement('div');
+                        newTechnicianEl.className = 'wo-technician';
+                        newTechnicianEl.innerHTML = `<i class="fas fa-user"></i> ${order.technician}`;
+                        item.appendChild(newTechnicianEl);
+                    } else {
+                        technicianEl.innerHTML = `<i class="fas fa-user"></i> ${order.technician}`;
+                    }
+                } else if (technicianEl) {
+                    technicianEl.remove();
+                }
             }
         }
         
@@ -529,22 +645,32 @@
         function addNewOrder() {
             const wo = document.getElementById('new-wo').value.trim();
             const pdo = document.getElementById('new-pdo').value.trim();
-            const lat = parseFloat(document.getElementById('new-lat').value);
-            const lng = parseFloat(document.getElementById('new-lng').value);
+            const desc = document.getElementById('new-desc').value.trim();
+            const technician = document.getElementById('new-technician').value.trim();
+            const coordsInput = document.getElementById('new-coords').value.trim();
             
-            if (!wo || !pdo || isNaN(lat) || isNaN(lng)) {
-                alert('Por favor, preencha todos os campos corretamente!');
+            if (!wo || !pdo || !coordsInput) {
+                alert('Por favor, preencha pelo menos WO, PDO e Coordenadas!');
+                return;
+            }
+            
+            // Processar coordenadas (aceita com ou sem espaço após a vírgula)
+            const coordsArray = coordsInput.split(',').map(coord => parseFloat(coord.trim()));
+            
+            if (coordsArray.length !== 2 || isNaN(coordsArray[0]) || isNaN(coordsArray[1])) {
+                alert('Formato de coordenadas inválido! Use: latitude, longitude');
                 return;
             }
             
             const database = firebase.database();
             database.ref('workOrders/' + wo).set({
                 pdo: pdo,
-                coords: [lat, lng],
+                desc: desc || null,
+                technician: technician || null,
+                coords: coordsArray,
                 status: 'aberta'
             }).then(() => {
                 clearForm();
-                alert('Ordem adicionada com sucesso!');
             }).catch(error => {
                 console.error('Erro ao adicionar:', error);
                 alert('Erro ao adicionar ordem. Verifique o console.');
@@ -560,12 +686,46 @@
             });
         }
         
+        // Excluir ordem
+        function deleteOrder(wo) {
+            if (confirm(`Tem certeza que deseja excluir a ordem ${wo}?`)) {
+                const database = firebase.database();
+                database.ref('workOrders/' + wo).remove()
+                    .then(() => {
+                        console.log('Ordem excluída com sucesso');
+                    })
+                    .catch(error => {
+                        console.error('Erro ao excluir:', error);
+                        alert('Erro ao excluir ordem');
+                    });
+            }
+        }
+        
+        // Filtrar marcadores
+        function filterMarkers() {
+            const showAbertas = document.getElementById('filter-abertas').checked;
+            const showFechadas = document.getElementById('filter-fechadas').checked;
+            
+            Object.entries(markers).forEach(([wo, marker]) => {
+                const status = marker.options.icon.options.html.includes('#e74c3c') ? 'fechada' : 'aberta';
+                
+                if ((status === 'aberta' && !showAbertas) || (status === 'fechada' && !showFechadas)) {
+                    marker.setOpacity(0);
+                    marker.setZIndexOffset(-1000);
+                } else {
+                    marker.setOpacity(1);
+                    marker.setZIndexOffset(0);
+                }
+            });
+        }
+        
         // Limpar formulário
         function clearForm() {
             document.getElementById('new-wo').value = '';
             document.getElementById('new-pdo').value = '';
-            document.getElementById('new-lat').value = '';
-            document.getElementById('new-lng').value = '';
+            document.getElementById('new-desc').value = '';
+            document.getElementById('new-technician').value = '';
+            document.getElementById('new-coords').value = '';
         }
         
         // Inicializar quando o DOM estiver pronto
