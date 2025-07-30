@@ -1,313 +1,444 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Mapa de Trabalhos</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mapa Interativo de Ordens de Serviço</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
             display: flex;
-            height: 100vh;
+            flex-direction: column;
+            overflow: hidden;
         }
         
-        #sidebar {
-            width: 300px;
-            background: #f5f5f5;
-            border-right: 1px solid #ddd;
-            overflow-y: auto;
-            padding: 15px;
-            box-sizing: border-box;
-        }
-        
-        #map {
+        #app-container {
+            display: flex;
             flex: 1;
-            height: 100vh;
+            position: relative;
+        }
+        
+        /* Sidebar Styles */
+        #sidebar {
+            width: 350px;
+            background: #f8f9fa;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        
+        #sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .sidebar-header {
+            padding: 15px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .sidebar-title {
-            font-size: 18px;
+            font-size: 1.2rem;
             font-weight: bold;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ddd;
         }
         
+        .toggle-sidebar {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        #work-orders-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        /* Form Styles */
+        #add-order-form {
+            padding: 15px;
+            background: #e9ecef;
+            border-top: 1px solid #ddd;
+        }
+        
+        .form-group {
+            margin-bottom: 10px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        /* Work Order Item Styles */
         .work-order-item {
             background: white;
-            border-radius: 4px;
-            padding: 10px;
+            border-radius: 6px;
+            padding: 12px;
             margin-bottom: 10px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             cursor: pointer;
             transition: all 0.2s;
-            border-left: 3px solid #3388ff;
+            border-left: 4px solid #3498db;
         }
         
         .work-order-item:hover {
-            background: #f0f7ff;
-            transform: translateX(3px);
+            transform: translateX(2px);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
         }
         
         .work-order-item.fechada {
-            border-left-color: #ff3333;
+            border-left-color: #e74c3c;
         }
         
-        .work-order-item .wo-number {
+        .wo-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .wo-number {
             font-weight: bold;
-            margin-bottom: 5px;
-            color: #333;
+            color: #2c3e50;
         }
         
-        .work-order-item .wo-pdo {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        
-        .work-order-item .wo-status {
-            font-size: 12px;
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 3px;
-            background: #3388ff;
+        .wo-status {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #3498db;
             color: white;
         }
         
         .work-order-item.fechada .wo-status {
-            background: #ff3333;
+            background: #e74c3c;
         }
         
-        .custom-popup {
+        .wo-pdo {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        /* Map Styles */
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        
+        /* Custom Popup Styles */
+        .leaflet-popup-content {
             min-width: 250px;
-            padding: 10px;
         }
         
-        /* Estilos dos pins e popups (manter os mesmos do anterior) */
-        .pin {
-            width: 30px;
-            height: 30px;
-            border-radius: 50% 50% 50% 0;
-            background: #3388ff;
-            position: absolute;
-            transform: rotate(-45deg);
-            left: 50%;
-            top: 50%;
-            margin: -20px 0 0 -15px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        .popup-header {
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
         }
         
-        .pin:after {
-            content: "";
-            width: 14px;
-            height: 14px;
-            margin: 8px 0 0 8px;
-            background: rgba(255,255,255,0.8);
-            position: absolute;
-            border-radius: 50%;
+        .popup-title {
+            font-weight: bold;
+            color: #2c3e50;
         }
         
-        .pin.fechada {
-            background: #ff3333;
+        .popup-content {
+            margin: 10px 0;
+        }
+        
+        .popup-actions {
+            margin-top: 10px;
+        }
+        
+        .gmaps-link {
+            display: inline-block;
+            margin-top: 5px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .gmaps-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            #sidebar {
+                position: absolute;
+                width: 85%;
+                height: 100%;
+                z-index: 1000;
+            }
+            
+            #sidebar:not(.collapsed) {
+                box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+            }
+            
+            .toggle-sidebar {
+                position: fixed;
+                top: 10px;
+                left: 10px;
+                z-index: 500;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="sidebar">
-        <div class="sidebar-title">Ordens de Serviço</div>
-        <div id="work-orders-list"></div>
+    <div id="app-container">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Ordens de Serviço</span>
+                <button class="toggle-sidebar" onclick="toggleSidebar()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div id="work-orders-list"></div>
+            
+            <div id="add-order-form">
+                <h3>Adicionar Nova OS</h3>
+                <div class="form-group">
+                    <label for="new-wo">Número WO:</label>
+                    <input type="text" id="new-wo" placeholder="Ex: WO 12345678">
+                </div>
+                <div class="form-group">
+                    <label for="new-pdo">PDO:</label>
+                    <input type="text" id="new-pdo" placeholder="Ex: PDO-92-LOU-0161.33">
+                </div>
+                <div class="form-group">
+                    <label for="new-lat">Latitude:</label>
+                    <input type="text" id="new-lat" placeholder="Ex: 38.817256">
+                </div>
+                <div class="form-group">
+                    <label for="new-lng">Longitude:</label>
+                    <input type="text" id="new-lng" placeholder="Ex: -9.165423">
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" onclick="addNewOrder()">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                    <button class="btn-secondary" onclick="clearForm()">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map -->
+        <div id="map"></div>
+        
+        <!-- Mobile toggle button (hidden on desktop) -->
+        <button class="toggle-sidebar" id="mobile-toggle" onclick="toggleSidebar()" style="display: none;">
+            <i class="fas fa-bars"></i>
+        </button>
     </div>
-    
-    <div id="map"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase.js"></script>
+    
     <script>
-        // Inicializa o mapa
-        var map = L.map('map').setView([38.825, -9.155], 14);
-
-        // Adiciona os tiles do OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // Dados dos pontos
-        var dataPoints = [
-            {
-                wo: "WO 16903160",
-                pdo: "PDO-92-LOU-0161.33",
-                desc: "Normal",
-                coords: [38.817256, -9.165423],
-                status: "aberta",
-                responsavel: ""
-            },
-            {
-                wo: "WO 16910762",
-                pdo: "PDO-92-LOU-0010.13",
-                desc: "Normal",
-                coords: [38.837121, -9.156680],
-                status: "aberta",
-                responsavel: ""
-            },
-            {
-                wo: "WO 16922859",
-                pdo: "PDO-92-LOU-1259.2",
-                desc: "Normal",
-                coords: [38.822771, -9.144502],
-                status: "aberta",
-                responsavel: ""
+        // Variáveis globais
+        let map;
+        const markers = {};
+        const workOrderItems = {};
+        
+        // Inicialização do mapa
+        function initMap() {
+            map = L.map('map').setView([38.825, -9.155], 14);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Verifica se é mobile
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.getElementById('mobile-toggle').style.display = 'flex';
             }
-        ];
-
-        // Objeto para armazenar os marcadores
-        var markers = {};
-        var workOrderItems = {};
-
-        // Cria ícones personalizados
+        }
+        
+        // Alternar sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('mobile-toggle');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            if (sidebar.classList.contains('collapsed')) {
+                toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+            } else {
+                toggleBtn.innerHTML = '<i class="fas fa-times"></i>';
+            }
+        }
+        
+        // Adicionar nova ordem de serviço
+        function addNewOrder() {
+            const wo = document.getElementById('new-wo').value.trim();
+            const pdo = document.getElementById('new-pdo').value.trim();
+            const lat = parseFloat(document.getElementById('new-lat').value);
+            const lng = parseFloat(document.getElementById('new-lng').value);
+            
+            if (!wo || !pdo || isNaN(lat) || isNaN(lng)) {
+                alert('Por favor, preencha todos os campos corretamente!');
+                return;
+            }
+            
+            const newOrder = {
+                wo: wo,
+                pdo: pdo,
+                coords: [lat, lng],
+                status: 'aberta'
+            };
+            
+            // Adiciona ao Firebase
+            database.ref('workOrders/' + wo).set({
+                pdo: pdo,
+                status: 'aberta',
+                coords: [lat, lng]
+            }).then(() => {
+                clearForm();
+                alert('Ordem adicionada com sucesso!');
+            }).catch(error => {
+                console.error('Erro ao adicionar:', error);
+                alert('Erro ao adicionar ordem. Verifique o console.');
+            });
+        }
+        
+        // Limpar formulário
+        function clearForm() {
+            document.getElementById('new-wo').value = '';
+            document.getElementById('new-pdo').value = '';
+            document.getElementById('new-lat').value = '';
+            document.getElementById('new-lng').value = '';
+        }
+        
+        // Atualizar item na lista
+        function updateWorkOrderItem(wo, status) {
+            const item = workOrderItems[wo];
+            if (item) {
+                item.querySelector('.wo-status').textContent = status === 'fechada' ? 'Fechada' : 'Aberta';
+                item.querySelector('.wo-status').style.backgroundColor = status === 'fechada' ? '#e74c3c' : '#3498db';
+                
+                if (status === 'fechada') {
+                    item.classList.add('fechada');
+                } else {
+                    item.classList.remove('fechada');
+                }
+            }
+        }
+        
+        // Criar ícone personalizado
         function createCustomIcon(isClosed) {
             return L.divIcon({
                 className: 'custom-icon',
-                html: `<div class="pin ${isClosed ? 'fechada' : ''}"></div>`,
+                html: `<div style="
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50% 50% 50% 0;
+                    background: ${isClosed ? '#e74c3c' : '#3498db'};
+                    transform: rotate(-45deg);
+                    position: relative;
+                ">
+                    <div style="
+                        width: 14px;
+                        height: 14px;
+                        background: rgba(255,255,255,0.8);
+                        border-radius: 50%;
+                        position: absolute;
+                        top: 8px;
+                        left: 8px;
+                    "></div>
+                </div>`,
                 iconSize: [30, 30],
-                iconAnchor: [15, 30],
-                popupAnchor: [0, -30]
+                iconAnchor: [15, 30]
             });
         }
-
-        // Atualiza o item na lista
-        function updateWorkOrderItem(wo, status) {
-            var item = workOrderItems[wo];
-            if (status === "fechada") {
-                item.classList.add('fechada');
-                item.querySelector('.wo-status').textContent = "Fechada";
-                item.querySelector('.wo-status').style.backgroundColor = "#ff3333";
-            } else {
-                item.classList.remove('fechada');
-                item.querySelector('.wo-status').textContent = "Aberta";
-                item.querySelector('.wo-status').style.backgroundColor = "#3388ff";
-            }
-        }
-
-        // Adiciona marcadores para cada ponto de dados
-        dataPoints.forEach(function(point) {
-            // Cria o conteúdo do popup
-            var popupContent = `
-                <div class="custom-popup">
-                    <strong>WO:</strong> ${point.wo}<br>
-                    <strong>PDO:</strong> ${point.pdo}<br>
-                    <strong>Descrição:</strong> ${point.desc}<br><br>
-                    
-                    <div class="checkbox-group">
-                        <strong>Status:</strong>
-                        <div class="checkbox-line">
-                            <input type="radio" id="aberta-${point.wo}" name="status-${point.wo}" value="aberta" ${point.status === 'aberta' ? 'checked' : ''}>
-                            <label for="aberta-${point.wo}">Aberta</label>
-                        </div>
-                        <div class="checkbox-line">
-                            <input type="radio" id="fechada-${point.wo}" name="status-${point.wo}" value="fechada" ${point.status === 'fechada' ? 'checked' : ''}>
-                            <label for="fechada-${point.wo}">Fechada</label>
-                        </div>
-                    </div>
-                    
-                    <div class="checkbox-group">
-                        <strong>Responsável:</strong>
-                        <div class="checkbox-line">
-                            <input type="radio" id="pedro-${point.wo}" name="responsavel-${point.wo}" value="pedro" ${point.responsavel === 'pedro' ? 'checked' : ''}>
-                            <label for="pedro-${point.wo}">Pedro</label>
-                        </div>
-                        <div class="checkbox-line">
-                            <input type="radio" id="amorim-${point.wo}" name="responsavel-${point.wo}" value="amorim" ${point.responsavel === 'amorim' ? 'checked' : ''}>
-                            <label for="amorim-${point.wo}">Amorim</label>
-                        </div>
-                    </div>
-                </div>
-            `;
+        
+        // Inicializar quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
             
-            // Cria o marcador
-            markers[point.wo] = L.marker(point.coords, {
-                icon: createCustomIcon(point.status === "fechada")
-            }).addTo(map).bindPopup(popupContent);
-            
-            // Cria o item na lista
-            var item = document.createElement('div');
-            item.className = `work-order-item ${point.status === "fechada" ? "fechada" : ""}`;
-            item.innerHTML = `
-                <div class="wo-number">${point.wo}</div>
-                <div class="wo-pdo">${point.pdo}</div>
-                <div class="wo-status">${point.status === "fechada" ? "Fechada" : "Aberta"}</div>
-            `;
-            
-            // Armazena referência do item
-            workOrderItems[point.wo] = item;
-            
-            // Adiciona à lista
-            document.getElementById('work-orders-list').appendChild(item);
-            
-            // Evento de clique no item da lista
-            item.addEventListener('click', function() {
-                markers[point.wo].openPopup();
-                map.setView(point.coords, 16);
-            });
-            
-            // Adiciona evento quando o popup abre
-            markers[point.wo].on('popupopen', function() {
-                // Obtém os radio buttons
-                var fechadaRadio = document.getElementById(`fechada-${point.wo}`);
-                var abertaRadio = document.getElementById(`aberta-${point.wo}`);
-                
-                // Adiciona eventos de mudança
-                fechadaRadio.addEventListener('change', function() {
-                    if (this.checked) {
-                        markers[point.wo].setIcon(createCustomIcon(true));
-                        point.status = "fechada";
-                        updateWorkOrderItem(point.wo, "fechada");
-                    }
-                });
-                
-                abertaRadio.addEventListener('change', function() {
-                    if (this.checked) {
-                        markers[point.wo].setIcon(createCustomIcon(false));
-                        point.status = "aberta";
-                        updateWorkOrderItem(point.wo, "aberta");
-                    }
-                });
-                
-                // Eventos para o responsável
-                var pedroRadio = document.getElementById(`pedro-${point.wo}`);
-                var amorimRadio = document.getElementById(`amorim-${point.wo}`);
-                
-                pedroRadio.addEventListener('change', function() {
-                    if (this.checked) {
-                        point.responsavel = "pedro";
-                    }
-                });
-                
-                amorimRadio.addEventListener('change', function() {
-                    if (this.checked) {
-                        point.responsavel = "amorim";
-                    }
-                });
+            // Ajustar sidebar no resize
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 768) {
+                    document.getElementById('sidebar').classList.remove('collapsed');
+                    document.getElementById('mobile-toggle').style.display = 'none';
+                } else {
+                    document.getElementById('mobile-toggle').style.display = 'flex';
+                }
             });
         });
-
-        // Centraliza o mapa para mostrar todos os marcadores
-        function fitMapToMarkers() {
-            var markerGroup = new L.featureGroup();
-            dataPoints.forEach(function(point) {
-                markerGroup.addLayer(markers[point.wo]);
-            });
-            map.fitBounds(markerGroup.getBounds().pad(0.2));
-        }
-
-        // Ajusta o mapa após um pequeno delay para garantir que tudo está carregado
-        setTimeout(fitMapToMarkers, 100);
     </script>
 </body>
 </html>
