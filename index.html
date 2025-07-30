@@ -8,34 +8,32 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     
-    <!-- Font Awesome para ícones -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
             overflow: hidden;
         }
         
         #app-container {
             display: flex;
-            flex: 1;
+            height: 100%;
             position: relative;
         }
         
         /* Sidebar Styles */
         #sidebar {
             width: 350px;
-            background: #f8f9fa;
+            background: #f5f7fa;
             border-right: 1px solid #ddd;
             display: flex;
             flex-direction: column;
@@ -75,74 +73,25 @@
             padding: 10px;
         }
         
-        /* Form Styles */
-        #add-order-form {
-            padding: 15px;
-            background: #e9ecef;
-            border-top: 1px solid #ddd;
-        }
-        
-        .form-group {
-            margin-bottom: 10px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-        }
-        
-        .form-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        button {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        .btn-primary {
-            background: #3498db;
-            color: white;
-            flex: 1;
-        }
-        
-        .btn-secondary {
-            background: #95a5a6;
-            color: white;
-        }
-        
         /* Work Order Item Styles */
         .work-order-item {
             background: white;
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 12px;
             margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             cursor: pointer;
             transition: all 0.2s;
             border-left: 4px solid #3498db;
         }
         
-        .work-order-item:hover {
-            transform: translateX(2px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-        }
-        
         .work-order-item.fechada {
             border-left-color: #e74c3c;
+        }
+        
+        .work-order-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         
         .wo-header {
@@ -158,10 +107,11 @@
         
         .wo-status {
             font-size: 0.8rem;
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 12px;
             background: #3498db;
             color: white;
+            font-weight: bold;
         }
         
         .work-order-item.fechada .wo-status {
@@ -171,44 +121,115 @@
         .wo-pdo {
             font-size: 0.9rem;
             color: #7f8c8d;
+        }
+        
+        /* Form Styles */
+        #add-order-form {
+            padding: 15px;
+            background: #ecf0f1;
+            border-top: 1px solid #ddd;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        .form-group label {
+            display: block;
             margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
         }
         
         /* Map Styles */
         #map {
             flex: 1;
             height: 100%;
+            z-index: 1;
         }
         
-        /* Custom Popup Styles */
+        /* Popup Styles */
         .leaflet-popup-content {
             min-width: 250px;
-        }
-        
-        .popup-header {
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
+            padding: 10px;
         }
         
         .popup-title {
             font-weight: bold;
+            margin-bottom: 5px;
             color: #2c3e50;
         }
         
-        .popup-content {
-            margin: 10px 0;
+        .popup-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin: 5px 0;
         }
         
-        .popup-actions {
-            margin-top: 10px;
+        .status-aberta {
+            background: #3498db;
+        }
+        
+        .status-fechada {
+            background: #e74c3c;
         }
         
         .gmaps-link {
             display: inline-block;
-            margin-top: 5px;
+            margin-top: 8px;
             color: #3498db;
             text-decoration: none;
+            font-weight: 500;
         }
         
         .gmaps-link:hover {
@@ -221,26 +242,23 @@
                 position: absolute;
                 width: 85%;
                 height: 100%;
-                z-index: 1000;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             }
             
-            #sidebar:not(.collapsed) {
-                box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-            }
-            
-            .toggle-sidebar {
-                position: fixed;
-                top: 10px;
-                left: 10px;
-                z-index: 500;
-                background: rgba(0,0,0,0.7);
+            #mobile-toggle {
+                position: absolute;
+                top: 15px;
+                left: 15px;
+                z-index: 1001;
+                background: rgba(44, 62, 80, 0.9);
                 color: white;
-                width: 40px;
-                height: 40px;
+                width: 45px;
+                height: 45px;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             }
         }
     </style>
@@ -256,10 +274,12 @@
                 </button>
             </div>
             
-            <div id="work-orders-list"></div>
+            <div id="work-orders-list">
+                <!-- Os itens serão adicionados dinamicamente -->
+            </div>
             
             <div id="add-order-form">
-                <h3>Adicionar Nova OS</h3>
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">Adicionar Nova OS</h3>
                 <div class="form-group">
                     <label for="new-wo">Número WO:</label>
                     <input type="text" id="new-wo" placeholder="Ex: WO 12345678">
@@ -290,8 +310,8 @@
         <!-- Map -->
         <div id="map"></div>
         
-        <!-- Mobile toggle button (hidden on desktop) -->
-        <button class="toggle-sidebar" id="mobile-toggle" onclick="toggleSidebar()" style="display: none;">
+        <!-- Mobile Toggle Button -->
+        <button id="mobile-toggle" onclick="toggleSidebar()" style="display: none;">
             <i class="fas fa-bars"></i>
         </button>
     </div>
@@ -303,10 +323,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     
-    <!-- App Scripts -->
+    <!-- Firebase Config -->
     <script src="firebase-config.js"></script>
-    <script src="firebase.js"></script>
     
+    <!-- Main App Script -->
     <script>
         // Variáveis globais
         let map;
@@ -315,26 +335,42 @@
         
         // Inicialização do mapa
         function initMap() {
-            map = L.map('map').setView([38.825, -9.155], 14);
+            map = L.map('map').setView([38.817256, -9.165423], 14);
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
             
-            // Verifica se é mobile
+            // Verificar se é mobile
+            checkMobileView();
+            
+            // Adicionar evento de clique no mapa para obter coordenadas
+            map.on('click', function(e) {
+                document.getElementById('new-lat').value = e.latlng.lat.toFixed(6);
+                document.getElementById('new-lng').value = e.latlng.lng.toFixed(6);
+            });
+            
+            // Iniciar listener do Firebase
+            initFirebaseListeners();
+        }
+        
+        // Verificar se é visualização mobile
+        function checkMobileView() {
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.add('collapsed');
                 document.getElementById('mobile-toggle').style.display = 'flex';
+            } else {
+                document.getElementById('sidebar').classList.remove('collapsed');
+                document.getElementById('mobile-toggle').style.display = 'none';
             }
         }
         
         // Alternar sidebar
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            const toggleBtn = document.getElementById('mobile-toggle');
-            
             sidebar.classList.toggle('collapsed');
             
+            const toggleBtn = document.getElementById('mobile-toggle');
             if (sidebar.classList.contains('collapsed')) {
                 toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
             } else {
@@ -342,73 +378,18 @@
             }
         }
         
-        // Adicionar nova ordem de serviço
-        function addNewOrder() {
-            const wo = document.getElementById('new-wo').value.trim();
-            const pdo = document.getElementById('new-pdo').value.trim();
-            const lat = parseFloat(document.getElementById('new-lat').value);
-            const lng = parseFloat(document.getElementById('new-lng').value);
-            
-            if (!wo || !pdo || isNaN(lat) || isNaN(lng)) {
-                alert('Por favor, preencha todos os campos corretamente!');
-                return;
-            }
-            
-            const newOrder = {
-                wo: wo,
-                pdo: pdo,
-                coords: [lat, lng],
-                status: 'aberta'
-            };
-            
-            // Adiciona ao Firebase
-            database.ref('workOrders/' + wo).set({
-                pdo: pdo,
-                status: 'aberta',
-                coords: [lat, lng]
-            }).then(() => {
-                clearForm();
-                alert('Ordem adicionada com sucesso!');
-            }).catch(error => {
-                console.error('Erro ao adicionar:', error);
-                alert('Erro ao adicionar ordem. Verifique o console.');
-            });
-        }
-        
-        // Limpar formulário
-        function clearForm() {
-            document.getElementById('new-wo').value = '';
-            document.getElementById('new-pdo').value = '';
-            document.getElementById('new-lat').value = '';
-            document.getElementById('new-lng').value = '';
-        }
-        
-        // Atualizar item na lista
-        function updateWorkOrderItem(wo, status) {
-            const item = workOrderItems[wo];
-            if (item) {
-                item.querySelector('.wo-status').textContent = status === 'fechada' ? 'Fechada' : 'Aberta';
-                item.querySelector('.wo-status').style.backgroundColor = status === 'fechada' ? '#e74c3c' : '#3498db';
-                
-                if (status === 'fechada') {
-                    item.classList.add('fechada');
-                } else {
-                    item.classList.remove('fechada');
-                }
-            }
-        }
-        
         // Criar ícone personalizado
-        function createCustomIcon(isClosed) {
+        function createCustomIcon(color) {
             return L.divIcon({
                 className: 'custom-icon',
                 html: `<div style="
                     width: 30px;
                     height: 30px;
+                    background: ${color};
                     border-radius: 50% 50% 50% 0;
-                    background: ${isClosed ? '#e74c3c' : '#3498db'};
                     transform: rotate(-45deg);
                     position: relative;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                 ">
                     <div style="
                         width: 14px;
@@ -425,19 +406,171 @@
             });
         }
         
+        // Inicializar listeners do Firebase
+        function initFirebaseListeners() {
+            const database = firebase.database();
+            
+            database.ref('workOrders').on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                
+                // Remover marcadores que não existem mais
+                Object.keys(markers).forEach(wo => {
+                    if (!data[wo]) {
+                        map.removeLayer(markers[wo]);
+                        delete markers[wo];
+                        
+                        if (workOrderItems[wo]) {
+                            workOrderItems[wo].remove();
+                            delete workOrderItems[wo];
+                        }
+                    }
+                });
+                
+                // Adicionar/atualizar marcadores
+                Object.entries(data).forEach(([wo, order]) => {
+                    if (order.coords && order.coords.length === 2) {
+                        // Criar ou atualizar marcador
+                        if (!markers[wo]) {
+                            markers[wo] = L.marker(order.coords, {
+                                icon: createCustomIcon(order.status === 'fechada' ? '#e74c3c' : '#3498db')
+                            }).addTo(map);
+                            
+                            // Criar item na lista
+                            createListItem(wo, order);
+                        }
+                        
+                        // Atualizar popup
+                        updatePopup(wo, order);
+                        
+                        // Atualizar status
+                        if (workOrderItems[wo]) {
+                            updateListItem(wo, order);
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Criar item na lista
+        function createListItem(wo, order) {
+            const item = document.createElement('div');
+            item.className = `work-order-item ${order.status === 'fechada' ? 'fechada' : ''}`;
+            item.innerHTML = `
+                <div class="wo-header">
+                    <span class="wo-number">${wo}</span>
+                    <span class="wo-status">${order.status === 'fechada' ? 'Fechada' : 'Aberta'}</span>
+                </div>
+                <div class="wo-pdo">${order.pdo || ''}</div>
+            `;
+            
+            item.addEventListener('click', () => {
+                map.setView(order.coords, 16);
+                markers[wo].openPopup();
+                
+                if (window.innerWidth <= 768) {
+                    toggleSidebar();
+                }
+            });
+            
+            document.getElementById('work-orders-list').appendChild(item);
+            workOrderItems[wo] = item;
+        }
+        
+        // Atualizar popup
+        function updatePopup(wo, order) {
+            const popupContent = `
+                <div class="popup-title">${wo}</div>
+                <div>${order.pdo || ''}</div>
+                <div class="popup-status ${order.status === 'fechada' ? 'status-fechada' : 'status-aberta'}">
+                    ${order.status === 'fechada' ? 'Fechada' : 'Aberta'}
+                </div>
+                <a href="https://www.google.com/maps?q=${order.coords[0]},${order.coords[1]}" 
+                   class="gmaps-link" target="_blank">
+                   <i class="fas fa-map-marker-alt"></i> Abrir no Google Maps
+                </a>
+                <div style="margin-top: 10px;">
+                    <button onclick="updateOrderStatus('${wo}', 'aberta')" 
+                            style="${order.status === 'aberta' ? 'background:#3498db;color:white;' : ''}
+                                   padding: 5px 10px; border: none; border-radius: 3px; margin-right: 5px;">
+                        Aberta
+                    </button>
+                    <button onclick="updateOrderStatus('${wo}', 'fechada')" 
+                            style="${order.status === 'fechada' ? 'background:#e74c3c;color:white;' : ''}
+                                   padding: 5px 10px; border: none; border-radius: 3px;">
+                        Fechada
+                    </button>
+                </div>
+            `;
+            
+            markers[wo].bindPopup(popupContent);
+        }
+        
+        // Atualizar item na lista
+        function updateListItem(wo, order) {
+            const item = workOrderItems[wo];
+            if (item) {
+                const statusBadge = item.querySelector('.wo-status');
+                statusBadge.textContent = order.status === 'fechada' ? 'Fechada' : 'Aberta';
+                
+                if (order.status === 'fechada') {
+                    item.classList.add('fechada');
+                    statusBadge.style.background = '#e74c3c';
+                } else {
+                    item.classList.remove('fechada');
+                    statusBadge.style.background = '#3498db';
+                }
+            }
+        }
+        
+        // Adicionar nova ordem
+        function addNewOrder() {
+            const wo = document.getElementById('new-wo').value.trim();
+            const pdo = document.getElementById('new-pdo').value.trim();
+            const lat = parseFloat(document.getElementById('new-lat').value);
+            const lng = parseFloat(document.getElementById('new-lng').value);
+            
+            if (!wo || !pdo || isNaN(lat) || isNaN(lng)) {
+                alert('Por favor, preencha todos os campos corretamente!');
+                return;
+            }
+            
+            const database = firebase.database();
+            database.ref('workOrders/' + wo).set({
+                pdo: pdo,
+                coords: [lat, lng],
+                status: 'aberta'
+            }).then(() => {
+                clearForm();
+                alert('Ordem adicionada com sucesso!');
+            }).catch(error => {
+                console.error('Erro ao adicionar:', error);
+                alert('Erro ao adicionar ordem. Verifique o console.');
+            });
+        }
+        
+        // Atualizar status da ordem
+        function updateOrderStatus(wo, status) {
+            const database = firebase.database();
+            database.ref('workOrders/' + wo).update({
+                status: status,
+                lastUpdated: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+        
+        // Limpar formulário
+        function clearForm() {
+            document.getElementById('new-wo').value = '';
+            document.getElementById('new-pdo').value = '';
+            document.getElementById('new-lat').value = '';
+            document.getElementById('new-lng').value = '';
+        }
+        
         // Inicializar quando o DOM estiver pronto
         document.addEventListener('DOMContentLoaded', () => {
             initMap();
             
-            // Ajustar sidebar no resize
-            window.addEventListener('resize', () => {
-                if (window.innerWidth > 768) {
-                    document.getElementById('sidebar').classList.remove('collapsed');
-                    document.getElementById('mobile-toggle').style.display = 'none';
-                } else {
-                    document.getElementById('mobile-toggle').style.display = 'flex';
-                }
-            });
+            // Verificar redimensionamento da tela
+            window.addEventListener('resize', checkMobileView);
         });
     </script>
 </body>
